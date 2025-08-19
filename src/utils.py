@@ -15,6 +15,7 @@ from typing import List, Dict, Tuple, Set, Optional
 import os
 import logging
 
+
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -99,16 +100,12 @@ def analysis_plots(data, features, histplot=True, barplot=False, mean=None, text
             
             try:
                 fig.savefig(full_path, dpi=150, bbox_inches='tight')
-                print(f"Gráfico '{feature}' salvo em: {full_path}")
             except Exception as e:
                 print(f"Falha ao salvar '{feature}': {e}")
 
             plt.close(fig)
         
-        print(f"\nTodos os {len(features)} gráficos foram salvos em: {save_path}")
-        print("Agora exibindo os gráficos em grade para visualização...")
-        
-        # Continua para o fluxo normal de exibição em grade (sempre executa plt.show())
+
 
     # --- FLUXO ORIGINAL: MOSTRAR TODOS OS PLOTS JUNTOS ---
     try:
@@ -283,3 +280,75 @@ def outliers_search(data: pd.DataFrame, variable: str, save_plot: bool = False, 
     except Exception as e:
         logger.error(f"Erro na função outliers_search: {e}")
         raise
+
+
+def proportion_z_test(dfx, lista, z_base):
+    """
+    Realiza teste Z de proporção para 2 amostras.
+    
+    Args:
+        dfx (pd.DataFrame): DataFrame com dados das duas amostras
+        lista (list): Lista com nomes das amostras
+        z_base (float): Valor crítico do Z para comparação
+    """
+    # Calculating information of Sample 1:
+    churn_1 = dfx['Yes'][0]
+    n_1 = dfx.sum(axis=1)[0]
+    proportion_1 = churn_1 / n_1
+
+    # Calculating information of Sample 2:
+    churn_2 = dfx['Yes'][1]
+    n_2 = dfx.sum(axis=1)[1]
+    proportion_2 = churn_2 / n_2
+
+    # Creating a table with stats of samples
+    df_stats = pd.DataFrame([[churn_1,n_1,proportion_1],
+                           [churn_2,n_2,proportion_2]],
+                           index = lista,
+                           columns = ['X','n','proportion'])
+    print(df_stats)
+    print('\n')
+
+    # Cálculo correto da proporção ponderada
+    p_bar = (churn_1 + churn_2) / (n_1 + n_2)
+
+    z = (proportion_1 - proportion_2)/np.sqrt(p_bar*(1-p_bar)*(1/n_1+1/n_2))
+
+    if np.absolute(z) > z_base:
+        print('Since p-value < alpha, H0 is can be rejected!')
+    elif np.absolute(z) < z_base:
+        print("Since p-value > alpha, we can't reject H0.")
+    
+    return z
+
+
+def mean_z_test(dfx, lista):
+    """
+    Realiza teste Z de média para 2 amostras.
+    
+    Args:
+        dfx (pd.DataFrame): DataFrame com dados das duas amostras
+        lista (list): Lista com nomes das amostras
+    """
+    # Normalizing and calculating information of Sample 1:
+    churn_1 = dfx['Yes'][0] / dfx.sum(axis=1)[0]
+    n_1 = dfx.sum(axis=1)[0]
+    sigma_1 = np.sqrt(churn_1*(1-churn_1))
+
+    # Calculating information of Sample 2:
+    churn_2 = dfx['Yes'][1] / dfx.sum(axis=1)[1]
+    n_2 = dfx.sum(axis=1)[1]
+    sigma_2 = np.sqrt(churn_2*(1-churn_2))
+
+    # Creating a table with stats of samples
+    df_stats = pd.DataFrame([[churn_1,n_1,sigma_1],
+                             [churn_2,n_2,sigma_2]],
+                             index = lista,
+                             columns = ['X_bar','n','sigma'])
+    print(df_stats)
+    print('\n')
+
+    z = (churn_1-churn_2)/np.sqrt(((sigma_1**2)/n_1)+((sigma_2**2)/n_2))
+    print('The z-score found is {};'.format(z))
+    
+    return z
